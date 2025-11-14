@@ -2,8 +2,8 @@ package com.example.lab4.logic
 
 // абстрактний клас "Виріб"
 abstract class Product(val name: String,
-                       val manufacturer: String,
-                       val year: Int,
-                       val price: Double) {
+                       var manufacturer: String,
+                       var year: Int,
+                       var price: Double) {
     abstract fun info(): String
 }

@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ButtonDefaults
@@ -465,7 +466,6 @@ fun TabButton(text: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 fun DetailsList(warehouse: Warehouse) {
-    Text("Деталі", fontSize = 20.sp)
 
     LazyColumn {
         if (warehouse.allDetails.isEmpty()) {
@@ -475,28 +475,120 @@ fun DetailsList(warehouse: Warehouse) {
         } else {
             items(warehouse.allDetails) { detail ->
                 var expanded by remember { mutableStateOf(false) }
+                var isEditing by remember { mutableStateOf(false) }
 
-                Column {
+                // поля редактирования
+                var manufacturer by remember { mutableStateOf(detail.manufacturer) }
+                var year by remember { mutableStateOf(detail.year.toString()) }
+                var price by remember { mutableStateOf(detail.price.toString()) }
+                var material by remember { mutableStateOf(detail.material) }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+
+                    // ==== Заголовок детали ====
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { expanded = !expanded }
-                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp)
+                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(detail.name, fontSize = 16.sp)
-                        Text(
-                            if (expanded) "−" else "+",
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
+                        Row (modifier = Modifier.clickable { expanded = !expanded }){
+                            Text(detail.name, fontSize = 25.sp)
+                            Text(
+                                if (expanded) " −" else " +",
+                                fontSize = 25.sp,
+                                modifier = Modifier.padding(start = 6.dp)
+                            )
+                        }
+
+                        // ==== Кнопка редактировать ====
+                        IconButton(onClick = {
+                            expanded = true
+                            isEditing = !isEditing
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Редагувати"
+                            )
+                        }
                     }
 
+                    // ==== Раскрытая часть ====
                     if (expanded) {
-                        Column(modifier = Modifier.padding(start = 26.dp)) {
-                            Text("- Виробник: ${detail.manufacturer}")
-                            Text("- Рік виготовлення: ${detail.year}")
-                            Text("- Ціна: ${detail.price}")
-                            Text("- Матеріал: ${detail.material}")
+
+                        if (!isEditing) {
+                            // ----- обычный режим (просмотр) -----
+                            Column(modifier = Modifier.padding(start = 26.dp)) {
+                                Text("- Виробник: ${detail.manufacturer}")
+                                Text("- Рік виготовлення: ${detail.year}")
+                                Text("- Ціна: ${detail.price}")
+                                Text("- Матеріал: ${detail.material}")
+                            }
+
+                        } else {
+                            // ----- режим редактирования -----
+                            Column(modifier = Modifier.padding(start = 26.dp)) {
+
+                                OutlinedTextField(
+                                    value = manufacturer,
+                                    onValueChange = { manufacturer = it },
+                                    label = { Text("Виробник") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = year,
+                                    onValueChange = { year = it },
+                                    label = { Text("Рік") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = price,
+                                    onValueChange = { price = it },
+                                    label = { Text("Ціна") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = material,
+                                    onValueChange = { material = it },
+                                    label = { Text("Матеріал") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Button(onClick = {
+                                        // сохраняем новые значения
+                                        detail.manufacturer = manufacturer
+                                        detail.year = year.toIntOrNull() ?: detail.year
+                                        detail.price = price.toDoubleOrNull() ?: detail.price
+                                        detail.material = material
+
+                                        isEditing = false
+                                    }) {
+                                        Text("Зберегти")
+                                    }
+
+                                    OutlinedButton(onClick = {
+                                        // отмена: вернуть старые значения
+                                        manufacturer = detail.manufacturer
+                                        year = detail.year.toString()
+                                        price = detail.price.toString()
+                                        material = detail.material
+                                        isEditing = false
+                                    }) {
+                                        Text("Скасувати")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -507,7 +599,7 @@ fun DetailsList(warehouse: Warehouse) {
 
 @Composable
 fun AssembliesList(warehouse: Warehouse) {
-    Text("Вузли", fontSize = 20.sp)
+
 
     LazyColumn {
         if (warehouse.allAssemblies.isEmpty()) {
@@ -516,34 +608,111 @@ fun AssembliesList(warehouse: Warehouse) {
             }
         } else {
             items(warehouse.allAssemblies) { assembly ->
-                var expanded by remember { mutableStateOf(false) }
 
-                Column {
+                var expanded by remember { mutableStateOf(false) }
+                var isEditing by remember { mutableStateOf(false) }
+
+                // локальные поля редактирования
+                var manufacturer by remember { mutableStateOf(assembly.manufacturer) }
+                var year by remember { mutableStateOf(assembly.year.toString()) }
+                var price by remember { mutableStateOf(assembly.price.toString()) }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+
+                    // ===== Заголовок =====
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { expanded = !expanded }
-                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp)
+                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(assembly.name, fontSize = 16.sp)
-                        Text(
-                            if (expanded) "−" else "+",
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
+                        Row(
+                            modifier = Modifier.clickable { expanded = !expanded }
+                        ) {
+                            Text(assembly.name, fontSize = 16.sp)
+                            Text(if (expanded) " −" else " +",
+                                fontSize = 20.sp,
+                                modifier = Modifier.padding(start = 6.dp)
+                            )
+                        }
+
+                        IconButton(onClick = {
+                            expanded = true
+                            isEditing = !isEditing
+                        }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit assembly")
+                        }
                     }
 
+                    // ===== Раскрытая часть =====
                     if (expanded) {
-                        Column(modifier = Modifier.padding(start = 26.dp)) {
-                            Text("- Виробник: ${assembly.manufacturer}")
-                            Text("- Рік виготовлення: ${assembly.year}")
-                            Text("- Ціна: ${assembly.price}")
-                            Text(
-                                "- Деталі: ${
-                                    if (assembly.details.isEmpty()) "не вказано"
-                                    else assembly.details.joinToString(", ") { it.name }
-                                }"
-                            )
+
+                        if (!isEditing) {
+                            // Просмотр обычных данных
+                            Column(modifier = Modifier.padding(start = 26.dp)) {
+                                Text("- Виробник: ${assembly.manufacturer}")
+                                Text("- Рік виготовлення: ${assembly.year}")
+                                Text("- Ціна: ${assembly.price}")
+                                Text(
+                                    "- Деталі: ${
+                                        if (assembly.details.isEmpty()) "не вказано"
+                                        else assembly.details.joinToString(", ") { it.name }
+                                    }"
+                                )
+                            }
+
+                        } else {
+                            // ===== Режим редактирования =====
+                            Column(modifier = Modifier.padding(start = 26.dp)) {
+
+                                OutlinedTextField(
+                                    value = manufacturer,
+                                    onValueChange = { manufacturer = it },
+                                    label = { Text("Виробник") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = year,
+                                    onValueChange = { year = it },
+                                    label = { Text("Рік") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = price,
+                                    onValueChange = { price = it },
+                                    label = { Text("Ціна") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Button(onClick = {
+                                        assembly.manufacturer = manufacturer
+                                        assembly.year = year.toIntOrNull() ?: assembly.year
+                                        assembly.price = price.toDoubleOrNull() ?: assembly.price
+                                        isEditing = false
+                                    }) {
+                                        Text("Зберегти")
+                                    }
+
+                                    OutlinedButton(onClick = {
+                                        manufacturer = assembly.manufacturer
+                                        year = assembly.year.toString()
+                                        price = assembly.price.toString()
+                                        isEditing = false
+                                    }) {
+                                        Text("Скасувати")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -555,7 +724,6 @@ fun AssembliesList(warehouse: Warehouse) {
 
 @Composable
 fun MechanismsList(warehouse: Warehouse) {
-    Text("Механізми", fontSize = 20.sp)
 
     LazyColumn {
         if (warehouse.allMechanisms.isEmpty()) {
@@ -564,34 +732,111 @@ fun MechanismsList(warehouse: Warehouse) {
             }
         } else {
             items(warehouse.allMechanisms) { mechanism ->
-                var expanded by remember { mutableStateOf(false) }
 
-                Column {
+                var expanded by remember { mutableStateOf(false) }
+                var isEditing by remember { mutableStateOf(false) }
+
+                // поля для редакции
+                var manufacturer by remember { mutableStateOf(mechanism.manufacturer) }
+                var year by remember { mutableStateOf(mechanism.year.toString()) }
+                var price by remember { mutableStateOf(mechanism.price.toString()) }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+
+                    // ===== Заголовок =====
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { expanded = !expanded }
-                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp)
+                            .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(mechanism.name, fontSize = 16.sp)
-                        Text(
-                            if (expanded) "−" else "+",
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
+                        Row(
+                            modifier = Modifier.clickable { expanded = !expanded }
+                        ) {
+                            Text(mechanism.name, fontSize = 16.sp)
+                            Text(if (expanded) " −" else " +",
+                                fontSize = 20.sp,
+                                modifier = Modifier.padding(start = 6.dp)
+                            )
+                        }
+
+                        IconButton(onClick = {
+                            expanded = true
+                            isEditing = !isEditing
+                        }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit mechanism")
+                        }
                     }
 
+                    // ===== Раскрытая часть =====
                     if (expanded) {
-                        Column(modifier = Modifier.padding(start = 26.dp)) {
-                            Text("- Виробник: ${mechanism.manufacturer}")
-                            Text("- Рік виготовлення: ${mechanism.year}")
-                            Text("- Ціна: ${mechanism.price}")
-                            Text(
-                                "- Вузли: ${
-                                    if (mechanism.assemblies.isEmpty()) "не вказано"
-                                    else mechanism.assemblies.joinToString(", ") { it.name }
-                                }"
-                            )
+
+                        if (!isEditing) {
+
+                            Column(modifier = Modifier.padding(start = 26.dp)) {
+                                Text("- Виробник: ${mechanism.manufacturer}")
+                                Text("- Рік виготовлення: ${mechanism.year}")
+                                Text("- Ціна: ${mechanism.price}")
+                                Text(
+                                    "- Вузли: ${
+                                        if (mechanism.assemblies.isEmpty()) "не вказано"
+                                        else mechanism.assemblies.joinToString(", ") { it.name }
+                                    }"
+                                )
+                            }
+
+                        } else {
+                            // ===== Режим редактирования =====
+                            Column(modifier = Modifier.padding(start = 26.dp)) {
+
+                                OutlinedTextField(
+                                    value = manufacturer,
+                                    onValueChange = { manufacturer = it },
+                                    label = { Text("Виробник") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = year,
+                                    onValueChange = { year = it },
+                                    label = { Text("Рік") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = price,
+                                    onValueChange = { price = it },
+                                    label = { Text("Ціна") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Button(onClick = {
+                                        mechanism.manufacturer = manufacturer
+                                        mechanism.year = year.toIntOrNull() ?: mechanism.year
+                                        mechanism.price = price.toDoubleOrNull() ?: mechanism.price
+                                        isEditing = false
+                                    }) {
+                                        Text("Зберегти")
+                                    }
+
+                                    OutlinedButton(onClick = {
+                                        manufacturer = mechanism.manufacturer
+                                        year = mechanism.year.toString()
+                                        price = mechanism.price.toString()
+                                        isEditing = false
+                                    }) {
+                                        Text("Скасувати")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -599,6 +844,7 @@ fun MechanismsList(warehouse: Warehouse) {
         }
     }
 }
+
 
 
 
