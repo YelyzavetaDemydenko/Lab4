@@ -426,7 +426,12 @@ fun WarehouseTab(warehouse: Warehouse) {
         when (selectedTab) {
             0 -> DetailsList(warehouse)
             1 -> AssembliesList(warehouse)
-            2 -> MechanismsList(warehouse)
+            2 -> MechanismsList(
+                warehouse,
+                onDeleteMechanism = { mech ->
+                    warehouse.sell(mech)
+                }
+            )
         }
     }
 }
@@ -434,7 +439,7 @@ fun WarehouseTab(warehouse: Warehouse) {
 @Composable
 fun TabButton(text: String, selected: Boolean, onClick: () -> Unit) {
 
-    val bgColor = MaterialTheme.colorScheme.primaryContainer  // нежно голубой
+    val bgColor = MaterialTheme.colorScheme.primaryContainer
     val textColor = Color.Black
 
     if (selected) {
@@ -723,7 +728,10 @@ fun AssembliesList(warehouse: Warehouse) {
 
 
 @Composable
-fun MechanismsList(warehouse: Warehouse) {
+fun MechanismsList(
+    warehouse: Warehouse,
+    onDeleteMechanism: (Mechanism) -> Unit   // ← добавили callback
+) {
 
     LazyColumn {
         if (warehouse.allMechanisms.isEmpty()) {
@@ -736,7 +744,6 @@ fun MechanismsList(warehouse: Warehouse) {
                 var expanded by remember { mutableStateOf(false) }
                 var isEditing by remember { mutableStateOf(false) }
 
-                // поля для редакции
                 var manufacturer by remember { mutableStateOf(mechanism.manufacturer) }
                 var year by remember { mutableStateOf(mechanism.year.toString()) }
                 var price by remember { mutableStateOf(mechanism.price.toString()) }
@@ -747,7 +754,6 @@ fun MechanismsList(warehouse: Warehouse) {
                         .padding(vertical = 4.dp)
                 ) {
 
-                    // ===== Заголовок =====
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -758,7 +764,8 @@ fun MechanismsList(warehouse: Warehouse) {
                             modifier = Modifier.clickable { expanded = !expanded }
                         ) {
                             Text(mechanism.name, fontSize = 16.sp)
-                            Text(if (expanded) " −" else " +",
+                            Text(
+                                if (expanded) " −" else " +",
                                 fontSize = 20.sp,
                                 modifier = Modifier.padding(start = 6.dp)
                             )
@@ -772,9 +779,7 @@ fun MechanismsList(warehouse: Warehouse) {
                         }
                     }
 
-                    // ===== Раскрытая часть =====
                     if (expanded) {
-
                         if (!isEditing) {
 
                             Column(modifier = Modifier.padding(start = 26.dp)) {
@@ -790,7 +795,7 @@ fun MechanismsList(warehouse: Warehouse) {
                             }
 
                         } else {
-                            // ===== Режим редактирования =====
+                            // ===== Режим редагування =====
                             Column(modifier = Modifier.padding(start = 26.dp)) {
 
                                 OutlinedTextField(
@@ -835,6 +840,19 @@ fun MechanismsList(warehouse: Warehouse) {
                                     }) {
                                         Text("Скасувати")
                                     }
+                                }
+
+                                Spacer(Modifier.height(10.dp))
+
+                                //
+                                Button(
+                                    onClick = { onDeleteMechanism(mechanism) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Red
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Видалити", color = Color.White)
                                 }
                             }
                         }
@@ -1095,5 +1113,3 @@ fun AddTab(warehouse: Warehouse) {
         }
     }
 }
-
-

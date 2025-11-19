@@ -1,9 +1,10 @@
 package com.example.lab4.logic
 
+import androidx.compose.runtime.mutableStateListOf
 class Warehouse(val name: String) : Sellable {
-    val allDetails = mutableListOf<Detail>()
-    val allAssemblies = mutableListOf<Assembly>()
-    val allMechanisms = mutableListOf<Mechanism>()
+    var allDetails = mutableListOf<Detail>()
+    var allAssemblies = mutableListOf<Assembly>()
+    val allMechanisms = mutableStateListOf<Mechanism>()
 
     override fun buy(product: Product) {
         when (product) {
