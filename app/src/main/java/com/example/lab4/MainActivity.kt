@@ -29,7 +29,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -58,7 +57,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.graphics.Color
-
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -424,12 +424,18 @@ fun WarehouseTab(warehouse: Warehouse) {
 
         // ==== Контент в зависимости от выбранной вкладки ====
         when (selectedTab) {
-            0 -> DetailsList(warehouse)
-            1 -> AssembliesList(warehouse)
+            0 -> DetailsList(
+                warehouse,
+                onDeleteDetail = { product ->
+                    warehouse.sell(product)})
+            1 -> AssembliesList(
+                warehouse,
+                onDeleteAssembly = {product ->
+                    warehouse.sell(product)})
             2 -> MechanismsList(
                 warehouse,
-                onDeleteMechanism = { mech ->
-                    warehouse.sell(mech)
+                onDeleteMechanism = { product ->
+                    warehouse.sell(product)
                 }
             )
         }
@@ -470,17 +476,19 @@ fun TabButton(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun DetailsList(warehouse: Warehouse) {
+fun DetailsList(warehouse: Warehouse, onDeleteDetail: (Detail) -> Unit) {
+
 
     LazyColumn {
         if (warehouse.allDetails.isEmpty()) {
             item {
-                Text("• Немає", modifier = Modifier.padding(start = 10.dp))
+                Text("Жодної деталі не додано", modifier = Modifier.padding(start = 10.dp), fontSize = 15.sp)
             }
         } else {
             items(warehouse.allDetails) { detail ->
                 var expanded by remember { mutableStateOf(false) }
                 var isEditing by remember { mutableStateOf(false) }
+                var showDeleteDialog by remember { mutableStateOf(false) }
 
                 // поля редактирования
                 var manufacturer by remember { mutableStateOf(detail.manufacturer) }
@@ -499,13 +507,14 @@ fun DetailsList(warehouse: Warehouse) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row (modifier = Modifier.clickable { expanded = !expanded }){
-                            Text(detail.name, fontSize = 25.sp)
+                            Text(detail.name, fontSize = 20.sp)
                             Text(
                                 if (expanded) " −" else " +",
-                                fontSize = 25.sp,
+                                fontSize = 20.sp,
                                 modifier = Modifier.padding(start = 6.dp)
                             )
                         }
@@ -531,7 +540,11 @@ fun DetailsList(warehouse: Warehouse) {
                                 Text("- Виробник: ${detail.manufacturer}")
                                 Text("- Рік виготовлення: ${detail.year}")
                                 Text("- Ціна: ${detail.price}")
-                                Text("- Матеріал: ${detail.material}")
+                                Text(
+                                    "- Матеріал: ${
+                                        detail.material.ifBlank { "не вказано" }
+                                    }"
+                                )
                             }
 
                         } else {
@@ -571,7 +584,6 @@ fun DetailsList(warehouse: Warehouse) {
                                     modifier = Modifier.padding(top = 8.dp)
                                 ) {
                                     Button(onClick = {
-                                        // сохраняем новые значения
                                         detail.manufacturer = manufacturer
                                         detail.year = year.toIntOrNull() ?: detail.year
                                         detail.price = price.toDoubleOrNull() ?: detail.price
@@ -593,6 +605,38 @@ fun DetailsList(warehouse: Warehouse) {
                                         Text("Скасувати")
                                     }
                                 }
+
+                                Spacer(Modifier.height(10.dp))
+
+                                Button(
+                                    onClick = { showDeleteDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Видалити", color = Color.White)
+                                }
+
+                                // ===== Диалог подтверждения удаления =====
+                                if (showDeleteDialog) {
+                                    AlertDialog(
+                                        onDismissRequest = { showDeleteDialog = false },
+                                        title = { Text("Видалення") },
+                                        text = { Text("Ви дійсно хочете видалити '${detail.name}'?") },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                onDeleteDetail(detail)
+                                                showDeleteDialog = false
+                                            }) {
+                                                Text("Видалити")
+                                            }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showDeleteDialog = false }) {
+                                                Text("Скасувати")
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -603,19 +647,20 @@ fun DetailsList(warehouse: Warehouse) {
 }
 
 @Composable
-fun AssembliesList(warehouse: Warehouse) {
+fun AssembliesList(warehouse: Warehouse, onDeleteAssembly: (Assembly) -> Unit) {
 
 
     LazyColumn {
         if (warehouse.allAssemblies.isEmpty()) {
             item {
-                Text("• Немає", modifier = Modifier.padding(start = 10.dp))
+                Text("Жодного вузла не додано", modifier = Modifier.padding(start = 10.dp), fontSize = 15.sp)
             }
         } else {
             items(warehouse.allAssemblies) { assembly ->
 
                 var expanded by remember { mutableStateOf(false) }
                 var isEditing by remember { mutableStateOf(false) }
+                var showDeleteDialog by remember { mutableStateOf(false) }
 
                 // локальные поля редактирования
                 var manufacturer by remember { mutableStateOf(assembly.manufacturer) }
@@ -633,12 +678,13 @@ fun AssembliesList(warehouse: Warehouse) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
                             modifier = Modifier.clickable { expanded = !expanded }
                         ) {
-                            Text(assembly.name, fontSize = 16.sp)
+                            Text(assembly.name, fontSize = 20.sp)
                             Text(if (expanded) " −" else " +",
                                 fontSize = 20.sp,
                                 modifier = Modifier.padding(start = 6.dp)
@@ -717,6 +763,38 @@ fun AssembliesList(warehouse: Warehouse) {
                                         Text("Скасувати")
                                     }
                                 }
+
+                                Spacer(Modifier.height(10.dp))
+
+                                Button(
+                                    onClick = { showDeleteDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Видалити", color = Color.White)
+                                }
+
+                                // ===== Диалог подтверждения удаления =====
+                                if (showDeleteDialog) {
+                                    AlertDialog(
+                                        onDismissRequest = { showDeleteDialog = false },
+                                        title = { Text("Видалення") },
+                                        text = { Text("Ви дійсно хочете видалити '${assembly.name}'?") },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                onDeleteAssembly(assembly)
+                                                showDeleteDialog = false
+                                            }) {
+                                                Text("Видалити")
+                                            }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showDeleteDialog = false }) {
+                                                Text("Скасувати")
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -730,19 +808,20 @@ fun AssembliesList(warehouse: Warehouse) {
 @Composable
 fun MechanismsList(
     warehouse: Warehouse,
-    onDeleteMechanism: (Mechanism) -> Unit   // ← добавили callback
+    onDeleteMechanism: (Mechanism) -> Unit
 ) {
 
     LazyColumn {
         if (warehouse.allMechanisms.isEmpty()) {
             item {
-                Text("• Немає", modifier = Modifier.padding(start = 10.dp))
+                Text("Жодного механізму не додано", modifier = Modifier.padding(start = 10.dp), fontSize = 15.sp)
             }
         } else {
             items(warehouse.allMechanisms) { mechanism ->
 
                 var expanded by remember { mutableStateOf(false) }
                 var isEditing by remember { mutableStateOf(false) }
+                var showDeleteDialog by remember { mutableStateOf(false) }
 
                 var manufacturer by remember { mutableStateOf(mechanism.manufacturer) }
                 var year by remember { mutableStateOf(mechanism.year.toString()) }
@@ -758,12 +837,13 @@ fun MechanismsList(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 10.dp, top = 4.dp, bottom = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
                             modifier = Modifier.clickable { expanded = !expanded }
                         ) {
-                            Text(mechanism.name, fontSize = 16.sp)
+                            Text(mechanism.name, fontSize = 20.sp)
                             Text(
                                 if (expanded) " −" else " +",
                                 fontSize = 20.sp,
@@ -782,7 +862,7 @@ fun MechanismsList(
                     if (expanded) {
                         if (!isEditing) {
 
-                            Column(modifier = Modifier.padding(start = 26.dp)) {
+                            Column(modifier = Modifier.padding(start = 20.dp)) {
                                 Text("- Виробник: ${mechanism.manufacturer}")
                                 Text("- Рік виготовлення: ${mechanism.year}")
                                 Text("- Ціна: ${mechanism.price}")
@@ -844,15 +924,34 @@ fun MechanismsList(
 
                                 Spacer(Modifier.height(10.dp))
 
-
                                 Button(
-                                    onClick = { onDeleteMechanism(mechanism) },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.Red
-                                    ),
+                                    onClick = { showDeleteDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text("Видалити", color = Color.White)
+                                }
+
+                                // ===== Диалог подтверждения удаления =====
+                                if (showDeleteDialog) {
+                                    AlertDialog(
+                                        onDismissRequest = { showDeleteDialog = false },
+                                        title = { Text("Видалення") },
+                                        text = { Text("Ви дійсно хочете видалити '${mechanism.name}'?") },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                onDeleteMechanism(mechanism)
+                                                showDeleteDialog = false
+                                            }) {
+                                                Text("Видалити")
+                                            }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showDeleteDialog = false }) {
+                                                Text("Скасувати")
+                                            }
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -875,239 +974,254 @@ fun AddTab(warehouse: Warehouse) {
     var year by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var material by remember { mutableStateOf("") }
+    var showErrors by remember { mutableStateOf(false) }
 
-    // --- для вузла: пошук деталей і вибір ---
     var searchQueryDetails by remember { mutableStateOf("") }
     var searchResultsDetails by remember { mutableStateOf(listOf<Detail>()) }
     var selectedDetails by remember { mutableStateOf(setOf<Detail>()) }
 
-    // --- для механізму: пошук вузлів і вибір ---
     var searchQueryAssemblies by remember { mutableStateOf("") }
     var searchResultsAssemblies by remember { mutableStateOf(listOf<Assembly>()) }
     var selectedAssemblies by remember { mutableStateOf(setOf<Assembly>()) }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(10.dp)
-
+            .fillMaxSize()
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Додати", fontSize = 30.sp, modifier = Modifier.padding(8.dp))
 
-        // Вибір типу
+        item {
+            Text("Додати", fontSize = 30.sp, modifier = Modifier.padding(8.dp))
+        }
+
+        // --- Вибір типу ---
         if (category == null) {
-            Text("Оберіть тип:", fontSize = 16.sp, modifier = Modifier.padding(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Деталь", "Вузол", "Механізм").forEach { type ->
-                    Button(onClick = {
-                        // при переході скидаємо попередні вибори
-                        category = type
-                        name = ""; manufacturer = ""; year = ""; price = ""; material = ""
-                        searchQueryDetails = ""; searchResultsDetails = emptyList(); selectedDetails = emptySet()
-                        searchQueryAssemblies = ""; searchResultsAssemblies = emptyList(); selectedAssemblies = emptySet()
-                    }) {
-                        Text(type)
+            item {
+                Text("Оберіть тип:", fontSize = 16.sp, modifier = Modifier.padding(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Деталь", "Вузол", "Механізм").forEach { type ->
+                        Button(onClick = {
+                            category = type
+                            name = ""; manufacturer = ""; year = ""; price = ""; material = ""
+                            searchQueryDetails = ""; searchResultsDetails = emptyList(); selectedDetails = emptySet()
+                            searchQueryAssemblies = ""; searchResultsAssemblies = emptyList(); selectedAssemblies = emptySet()
+                        }) {
+                            Text(type)
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
             }
-            Spacer(modifier = Modifier.height(8.dp))
 
         } else {
-            Text("Тип: $category", fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Назва") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = manufacturer,
-                onValueChange = { manufacturer = it },
-                label = { Text("Виробник") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = year,
-                onValueChange = { year = it },
-                label = { Text("Рік") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = price,
-                onValueChange = { price = it },
-                label = { Text("Ціна") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            // ------------------- Базові поля -------------------
+            item {
+                Text("Тип: $category", fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
-            if (category == "Деталь") {
+            item {
                 OutlinedTextField(
-                    value = material,
-                    onValueChange = { material = it },
-                    label = { Text("Матеріал") },
+                    value = name, onValueChange = { name = it },
+                    label = { Text("Назва") },
+                    isError = showErrors && name.isBlank(),
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (showErrors && name.isBlank()) {
+                    Text("Це поле обов'язкове", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
             }
 
-            // --- Блок для Вузла: пошук деталей + чекбокси ---
-            if (category == "Вузол") {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Додайте деталі до вузла", fontSize = 16.sp, modifier = Modifier.fillMaxWidth())
-
+            item {
                 OutlinedTextField(
-                    value = searchQueryDetails,
-                    onValueChange = { searchQueryDetails = it },
-                    label = { Text("Пошук деталей") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    value = manufacturer, onValueChange = { manufacturer = it },
+                    label = { Text("Виробник") },
+                    isError = showErrors && manufacturer.isBlank(),
+                    modifier = Modifier.fillMaxWidth()
                 )
+                if (showErrors && manufacturer.isBlank()) {
+                    Text("Це поле обов'язкове", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+            }
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        searchResultsDetails = warehouse.allDetails.filter {
-                            it.name.contains(searchQueryDetails, ignoreCase = true)
-                        }
-                    }) {
-                        Text("Пошук деталей")
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("Вибрано: ${selectedDetails.size}", modifier = Modifier.align(Alignment.CenterVertically))
+            item {
+                OutlinedTextField(
+                    value = year, onValueChange = { year = it },
+                    label = { Text("Рік") },
+                    isError = showErrors && year.isBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (showErrors && year.isBlank()) {
+                    Text("Це поле обов'язкове", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+            }
+
+            item {
+                OutlinedTextField(
+                    value = price, onValueChange = { price = it },
+                    label = { Text("Ціна") },
+                    isError = showErrors && price.isBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (showErrors && price.isBlank()) {
+                    Text("Це поле обов'язкове", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+            }
+
+            if (category == "Деталь") {
+                item {
+                    OutlinedTextField(
+                        value = material,
+                        onValueChange = { material = it },
+                        label = { Text("Матеріал") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            // ============= ВУЗОЛ =============
+            if (category == "Вузол") {
+
+                item {
+                    OutlinedTextField(
+                        value = searchQueryDetails,
+                        onValueChange = { searchQueryDetails = it },
+                        label = { Text("Додайте деталі до вузла") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            searchResultsDetails = warehouse.allDetails.filter {
+                                it.name.contains(searchQueryDetails, ignoreCase = true)
+                            }
+                        }) { Text("Пошук деталей") }
+
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text("Вибрано: ${selectedDetails.size}", modifier = Modifier.align(Alignment.CenterVertically))
+                    }
+                }
 
                 if (searchResultsDetails.isNotEmpty()) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
-                        searchResultsDetails.forEach { detail ->
-                            val checked = selectedDetails.contains(detail)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Checkbox(
-                                    checked = checked,
-                                    onCheckedChange = { checkedNow ->
-                                        selectedDetails = if (checkedNow) selectedDetails + detail else selectedDetails - detail
-                                    }
-                                )
-                                Text(detail.name, modifier = Modifier.padding(start = 8.dp))
-                            }
+                    items(searchResultsDetails) { detail ->
+                        val checked = selectedDetails.contains(detail)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { now ->
+                                    selectedDetails = if (now) selectedDetails + detail else selectedDetails - detail
+                                }
+                            )
+                            Text(detail.name, modifier = Modifier.padding(start = 8.dp))
                         }
                     }
                 } else {
-                    Text("(Пошук нічого не знайшов або порожній запит)", modifier = Modifier.padding(8.dp))
+                    item {
+                        Text("(Пошук нічого не знайшов)", modifier = Modifier.padding(8.dp))
+                    }
                 }
             }
 
-            // --- Блок для Механізму: пошук вузлів + чекбокси ---
+            // ============= МЕХАНІЗМ =============
             if (category == "Механізм") {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Додайте вузли до механізму", fontSize = 16.sp, modifier = Modifier.fillMaxWidth())
 
-                OutlinedTextField(
-                    value = searchQueryAssemblies,
-                    onValueChange = { searchQueryAssemblies = it },
-                    label = { Text("Пошук вузлів") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                )
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        searchResultsAssemblies = warehouse.allAssemblies.filter {
-                            it.name.contains(searchQueryAssemblies, ignoreCase = true)
-                        }
-                    }) {
-                        Text("Пошук вузлів")
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("Вибрано: ${selectedAssemblies.size}", modifier = Modifier.align(Alignment.CenterVertically))
+                item {
+                    OutlinedTextField(
+                        value = searchQueryAssemblies,
+                        onValueChange = { searchQueryAssemblies = it },
+                        label = { Text("Додайте вузли до механізму") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            searchResultsAssemblies = warehouse.allAssemblies.filter {
+                                it.name.contains(searchQueryAssemblies, ignoreCase = true)
+                            }
+                        }) { Text("Пошук вузлів") }
+
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text("Вибрано: ${selectedAssemblies.size}", modifier = Modifier.align(Alignment.CenterVertically))
+                    }
+                }
 
                 if (searchResultsAssemblies.isNotEmpty()) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
-                        searchResultsAssemblies.forEach { assembly ->
-                            val checked = selectedAssemblies.contains(assembly)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Checkbox(
-                                    checked = checked,
-                                    onCheckedChange = { checkedNow ->
-                                        selectedAssemblies = if (checkedNow) selectedAssemblies + assembly else selectedAssemblies - assembly
-                                    }
-                                )
-                                Text(assembly.name, modifier = Modifier.padding(start = 8.dp))
-                            }
+                    items(searchResultsAssemblies) { assembly ->
+                        val checked = selectedAssemblies.contains(assembly)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { now ->
+                                    selectedAssemblies = if (now) selectedAssemblies + assembly else selectedAssemblies - assembly
+                                }
+                            )
+                            Text(assembly.name, modifier = Modifier.padding(start = 8.dp))
                         }
                     }
                 } else {
-                    Text("(Пошук нічого не знайшов або порожній запит)", modifier = Modifier.padding(8.dp))
+                    item {
+                        Text("(Пошук нічого не знайшов)", modifier = Modifier.padding(8.dp))
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // ---------- КНОПКИ ----------
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // Кнопки Додати / Назад
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
-                    try {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        showErrors = true
+                        if (name.isBlank() || manufacturer.isBlank() || year.isBlank() || price.isBlank()) return@Button
+
                         val y = year.toIntOrNull() ?: 2024
                         val p = price.toDoubleOrNull() ?: 0.0
+
                         when (category) {
-                            "Деталь" -> {
-                                warehouse.buy(
-                                    Detail(name, manufacturer, y, p, material)
-                                )
-                            }
-
+                            "Деталь" -> warehouse.buy(Detail(name, manufacturer, y, p, material))
                             "Вузол" -> {
-                                // створюємо вузол із вибраних деталей
-                                val newAssembly = Assembly(name, manufacturer, y, p, selectedDetails.toList())
-                                warehouse.buy(newAssembly)
-
-                                // видаляємо використані деталі зі складу
-                                warehouse.allDetails.removeAll(selectedDetails.toSet())
+                                warehouse.buy(Assembly(name, manufacturer, y, p, selectedDetails.toList()))
+                                warehouse.allDetails.removeAll(selectedDetails)
                             }
-
                             "Механізм" -> {
-                                // створюємо механізм із вибраних вузлів
-                                val newMechanism = Mechanism(name, manufacturer, y, p, selectedAssemblies.toList())
-                                warehouse.buy(newMechanism)
-
-                                // видаляємо використані вузли зі складу
-                                warehouse.allAssemblies.removeAll(selectedAssemblies.toSet())
+                                warehouse.buy(Mechanism(name, manufacturer, y, p, selectedAssemblies.toList()))
+                                warehouse.allAssemblies.removeAll(selectedAssemblies)
                             }
                         }
 
-                        // очищення стану після додавання
-                        name = ""; manufacturer = ""; year = ""; price = ""; material = ""
-                        searchQueryDetails = ""; searchResultsDetails = emptyList(); selectedDetails = emptySet()
-                        searchQueryAssemblies = ""; searchResultsAssemblies = emptyList(); selectedAssemblies = emptySet()
                         category = null
-
-                    } catch (e: Exception) {
-                        println("Помилка: ${e.message}")
+                        name = ""; manufacturer = ""; year = ""; price = ""; material = ""
+                        selectedDetails = emptySet(); selectedAssemblies = emptySet()
+                        searchQueryDetails = ""; searchResultsDetails = emptyList()
+                        searchQueryAssemblies = ""; searchResultsAssemblies = emptyList()
+                        showErrors = false
+                    }) {
+                        Text("Додати")
                     }
-                }) {
-                    Text("Додати")
-                }
 
-                Button(onClick = {
-                    // повернутися до вибору типу
-                    category = null
-                    name = ""; manufacturer = ""; year = ""; price = ""; material = ""
-                    searchQueryDetails = ""; searchResultsDetails = emptyList(); selectedDetails = emptySet()
-                    searchQueryAssemblies = ""; searchResultsAssemblies = emptyList(); selectedAssemblies = emptySet()
-                }) {
-                    Text("Назад")
+                    Button(onClick = {
+                        showErrors = false
+                        category = null
+                        name = ""; manufacturer = ""; year = ""; price = ""; material = ""
+                        selectedDetails = emptySet()
+                        selectedAssemblies = emptySet()
+                        searchQueryDetails = ""; searchResultsDetails = emptyList()
+                        searchQueryAssemblies = ""; searchResultsAssemblies = emptyList()
+                    }) {
+                        Text("Назад")
+                    }
                 }
             }
         }
