@@ -844,7 +844,7 @@ fun MechanismsList(
 
                                 Spacer(Modifier.height(10.dp))
 
-                                //
+
                                 Button(
                                     onClick = { onDeleteMechanism(mechanism) },
                                     colors = ButtonDefaults.buttonColors(
