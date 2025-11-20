@@ -626,7 +626,11 @@ fun DetailsList(warehouse: Warehouse, onDeleteDetail: (Detail) -> Unit) {
                                             TextButton(onClick = {
                                                 onDeleteDetail(detail)
                                                 showDeleteDialog = false
-                                            }) {
+                                            },
+                                                colors = ButtonDefaults.textButtonColors(
+                                                    contentColor = Color.Red // колір тексту
+                                                )
+                                            ) {
                                                 Text("Видалити")
                                             }
                                         },
@@ -784,7 +788,11 @@ fun AssembliesList(warehouse: Warehouse, onDeleteAssembly: (Assembly) -> Unit) {
                                             TextButton(onClick = {
                                                 onDeleteAssembly(assembly)
                                                 showDeleteDialog = false
-                                            }) {
+                                            },
+                                                colors = ButtonDefaults.textButtonColors(
+                                                    contentColor = Color.Red // колір тексту
+                                                )
+                                            ) {
                                                 Text("Видалити")
                                             }
                                         },
@@ -942,7 +950,11 @@ fun MechanismsList(
                                             TextButton(onClick = {
                                                 onDeleteMechanism(mechanism)
                                                 showDeleteDialog = false
-                                            }) {
+                                            },
+                                                colors = ButtonDefaults.textButtonColors(
+                                                    contentColor = Color.Red // колір тексту
+                                                )
+                                            ) {
                                                 Text("Видалити")
                                             }
                                         },
@@ -1025,7 +1037,7 @@ fun AddTab(warehouse: Warehouse) {
             item {
                 OutlinedTextField(
                     value = name, onValueChange = { name = it },
-                    label = { Text("Назва") },
+                    label = { Text("Назва*") },
                     isError = showErrors && name.isBlank(),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1037,7 +1049,7 @@ fun AddTab(warehouse: Warehouse) {
             item {
                 OutlinedTextField(
                     value = manufacturer, onValueChange = { manufacturer = it },
-                    label = { Text("Виробник") },
+                    label = { Text("Виробник*") },
                     isError = showErrors && manufacturer.isBlank(),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1049,7 +1061,7 @@ fun AddTab(warehouse: Warehouse) {
             item {
                 OutlinedTextField(
                     value = year, onValueChange = { year = it },
-                    label = { Text("Рік") },
+                    label = { Text("Рік*") },
                     isError = showErrors && year.isBlank(),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1061,7 +1073,7 @@ fun AddTab(warehouse: Warehouse) {
             item {
                 OutlinedTextField(
                     value = price, onValueChange = { price = it },
-                    label = { Text("Ціна") },
+                    label = { Text("Ціна*") },
                     isError = showErrors && price.isBlank(),
                     modifier = Modifier.fillMaxWidth()
                 )
